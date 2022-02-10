@@ -1,0 +1,19 @@
+{
+  "name": "foundry-template",
+  "author": "verumlotus",
+  "version": "1.0.0",
+  "description": "Foundry template",
+  "homepage": "https://github.com/verumlotus/foundry-template",
+  "scripts": {
+    "prettier": "prettier --write 'src/**/*.sol'",
+    "prettier:check": "prettier --check 'src/**/*.sol'",
+    "solhint": "solhint --config ./.solhint.json 'src/**/*.sol' --fix",
+    "solhint:check": "solhint --config ./.solhint.json 'src/**/*.sol'",
+    "lint": "yarn run prettier && yarn run solhint",
+    "lint:check": "yarn run prettier:check && yarn run solhint:check"
+  },
+  "devDependencies": {
+    "prettier": "^2.5.1",
+    "solhint": "^3.3.6"
+  }
+}

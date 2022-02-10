@@ -1,0 +1,5 @@
+[default]
+fuzz_runs = 256
+
+[hugeRun]
+fuzz_runs = 2048
