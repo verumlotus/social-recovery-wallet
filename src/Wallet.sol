@@ -10,6 +10,7 @@ import "@oz/token/ERC1155/IERC1155Receiver.sol";
  * Idea from https://vitalik.ca/general/2021/01/11/recovery.html
  * Note: This lightweight implementation is designed to support the case of losing the signing private key. 
  * In its current design, it is trivial for a compromised (stolen) signing key to drain the wallet. 
+ * To defend against compromised keys, Vitalik's concept of a vault would need to be layered on top. 
  * @author verum 
  */
 contract Wallet is ReentrancyGuard, IERC721Receiver, IERC1155Receiver {
