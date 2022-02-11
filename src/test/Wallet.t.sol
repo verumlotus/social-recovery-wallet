@@ -29,6 +29,9 @@ contract WalletTest is BaseTest {
     bytes32 g2Hash = _hashAddr(g2);
     bytes32 g3Hash = _hashAddr(g3);
 
+    address possibleG = address(0x4);
+    bytes32 possibleGHash = _hashAddr(possibleG);
+
     address fakeG;
 
     function setUp() public {
@@ -47,7 +50,7 @@ contract WalletTest is BaseTest {
         mockToken.mint(address(wallet), 100*10**mockToken.decimals());
         mockNft = new MockERC721();
         tokenId = 1;
-        mockNft.mint(address(wallet), tokenId);
+        mockNft.mint(owner, tokenId);
     }
 
     function testExecuteTx() public {
@@ -97,5 +100,29 @@ contract WalletTest is BaseTest {
         guardianList[1] = g2;
         wallet.executeRecovery(newOwner, guardianList);
         assertEq(wallet.owner(), newOwner);
+    }
+
+    function testGuardianRemoval() public {
+        wallet.initiateGuardianRemoval(g3Hash);
+        hevm.warp(block.timestamp + 4 days);
+        wallet.executeGuardianRemoval(g3Hash, possibleGHash);
+
+        // Check that g3 is not a guardian, and that possibleG is
+        assertTrue(!wallet.isGuardian(g3Hash));
+        assertTrue(wallet.isGuardian(possibleGHash));
+    }
+
+    function testGuardianNoTransferRemoval() public {
+        // ensure that guardian cannot transfer while queued for removal
+        wallet.initiateGuardianRemoval(g3Hash);
+        hevm.startPrank(g3);
+        hevm.expectRevert(bytes("guardian queueud for removal, cannot transfer guardianship"));
+        wallet.transferGuardianship(possibleGHash);
+
+    }
+
+    function testERC721Transfer() public {
+        mockNft.approve(address(wallet), tokenId);
+        mockNft.safeTransferFrom(owner, address(wallet), tokenId);
     }
 }
