@@ -19,22 +19,22 @@ contract Wallet is ReentrancyGuard, IERC721Receiver, IERC1155Receiver {
     ***********************************************/
 
     /// @notice true if hash of guardian address, else false
-    mapping(bytes32 => bool) isGuardian;
+    mapping(bytes32 => bool) public isGuardian;
 
     /// @notice stores the guardian threshold
-    uint256 threshold;
+    uint256 public threshold;
 
     /// @notice owner of the wallet
-    address owner;
+    address public owner;
 
     /// @notice true iff wallet is in recovery mode
-    bool inRecovery;
+    bool public inRecovery;
 
     /// @notice round of recovery we're in 
-    uint256 currRecoveryRound;
+    uint256 public currRecoveryRound;
 
     /// @notice mapping for bookkeeping when swapping guardians
-    mapping(bytes32 => uint256) guardianHashToRemovalTimestamp;
+    mapping(bytes32 => uint256) public guardianHashToRemovalTimestamp;
 
     /// @notice struct used for bookkeeping during recovery mode
     /// @dev trival struct but can be extended in future (when building for malicious guardians
@@ -46,7 +46,7 @@ contract Wallet is ReentrancyGuard, IERC721Receiver, IERC1155Receiver {
     }
 
     /// @notice mapping from guardian address to most recent Recovery struct created by them
-    mapping(address => Recovery) guardianToRecovery;
+    mapping(address => Recovery) public guardianToRecovery;
 
     /************************************************
      *  MODIFIERS & EVENTS
