@@ -6,9 +6,8 @@ import "@solmate/utils/ReentrancyGuard.sol";
  * @title SocialRecoveryWallet
  * @notice Social Recovery Wallet that preserves privacy of the Guardian's identities until recovery mode.
  * Idea from https://vitalik.ca/general/2021/01/11/recovery.html
- * Note: This lightweight implementation only supports the case of signing key loss. 
- * In its current design, it is easy for a malicious guardian/compromised signing key to interrupt a smooth
- * recovery process.
+ * Note: This lightweight implementation is designed to support the case of losing the signing private key. 
+ * In its current design, it is trivial for a compromised (stolen) signing key to drain the wallet. 
  * @author verum 
  */
 contract Wallet is ReentrancyGuard {
@@ -29,6 +28,9 @@ contract Wallet is ReentrancyGuard {
 
     /// @notice round of recovery we're in 
     uint256 currRecoveryRound;
+
+    /// @notice mapping for bookkeeping when swapping guardians
+    mapping(bytes32 => uint256) guardianHashToRemovalTimestamp;
 
     /// @notice struct used for bookkeeping during recovery mode
     /// @dev trival struct but can be extended in future (when building for malicious guardians
@@ -82,6 +84,15 @@ contract Wallet is ReentrancyGuard {
 
     /// @notice emit when recovery is executed
     event RecoveryExecuted(address oldOwner, address newOwner, uint256 indexed round);
+
+    /// @notice emit when guardian queued for removal
+    event GuardianRemovalQueued(bytes32 indexed guardianHash);
+
+    /// @notice emit when guardian removed
+    event GuardianRemoved(bytes32 indexed oldGuardianHash, bytes32 indexed newGuardianHash);
+
+    /// @notice emit when guardian reveals themselves
+    event GuardianRevealed(bytes32 indexed guardianHash, address indexed guardianAddr);
 
     /**
      * @notice Sets guardian hashes and threshold
@@ -203,14 +214,62 @@ contract Wallet is ReentrancyGuard {
      * @param newGuardianHash - hash of the address of the new guardian
      */
     function transferGuardianship(bytes32 newGuardianHash) onlyGuardian notInRecovery external {
+        // Don't let guardian queued for removal transfer their guardianship
+        require(
+            guardianHashToRemovalTimestamp[keccak256(abi.encodePacked(msg.sender))] == 0, 
+            "guardian queueud for removal, cannot transfer guardianship"
+        );
         isGuardian[keccak256(abi.encodePacked(msg.sender))] = false;
         isGuardian[newGuardianHash] = true;
         emit GuardinshipTransferred(msg.sender, newGuardianHash);
     }
 
-    function initiateGuardianSwap(bytes32 guardianHashOld, bytes32 guardianHashNew) external onlyOwner {
+    /**
+     * @notice Allows the owner to queue a guardian for removal
+     * @param guardianHash - hash of the address of the guardian to queue
+     */
+    function initiateGuardianRemoval(bytes32 guardianHash) external onlyOwner {
+        // verify that the hash actually corresponds to a guardian
+        require(isGuardian[guardianHash], "not a guardian");
 
+        // removal delay fixed at 3 days
+        guardianHashToRemovalTimestamp[guardianHash] = block.timestamp + 3 days;
+        emit GuardianRemovalQueued(guardianHash);
     }
-    
+
+    /**
+     * @notice Allows the owner to remove a guardian
+     * Note that the guardian must have been queued for removal prior to invocation of this function
+     * @param oldGuardianHash - hash of the address of the guardian to remove
+     * @param newGuardianHash - new guardian hash to replace the old guardian
+     */
+    function executeGuardianRemoval(bytes32 oldGuardianHash, bytes32 newGuardianHash) onlyOwner external {
+        require(guardianHashToRemovalTimestamp[oldGuardianHash] > 0, "guardian isn't queued for removal");
+        require(guardianHashToRemovalTimestamp[oldGuardianHash] <= block.timestamp, "time delay has not passed");
+
+        // Reset this the removal timestamp
+        guardianHashToRemovalTimestamp[oldGuardianHash] = 0;
+
+        isGuardian[oldGuardianHash] = false;
+        isGuardian[newGuardianHash] = true;
+        emit GuardianRemoved(oldGuardianHash, newGuardianHash);
+    }
+
+    /**
+     * @notice Allows the owner to cancel the removal of a guardian
+     * @param guardianHash - hash of the address of the guardian queued for removal
+     */
+    function cancelGuardianRemoval(bytes32 guardianHash) onlyOwner external {
+        guardianHashToRemovalTimestamp[guardianHash] = 0;
+    }
+
+    /**
+     * @notice Utility function that selectively allows a guardian to reveal their identity
+     * If the owner passes away, this can be used for the guardians to find each other and 
+     * determine a course of action
+     */
+    function revealGuardianIdentity() onlyGuardian external {
+        emit GuardianRevealed(keccak256(abi.encodePacked(msg.sender)), msg.sender);
+    }
 
 }
