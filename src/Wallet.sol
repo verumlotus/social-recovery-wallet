@@ -72,16 +72,16 @@ contract Wallet is ReentrancyGuard {
     event GuardinshipTransferred(address indexed from, bytes32 indexed newGuardianHash);
 
     /// @notice emit when recovery initiated
-    event RecoveryInitiated(address by, address newProposedOwner, uint256 round);
+    event RecoveryInitiated(address indexed by, address newProposedOwner, uint256 indexed round);
 
     /// @notice emit when recovery supported
-    event RecoverySupported(address by, address newProposedOwner, uint256 round);
+    event RecoverySupported(address by, address newProposedOwner, uint256 indexed round);
        
     /// @notice emit when recovery is cancelled
-    event RecoveryCancelled(address by, uint256 round);
+    event RecoveryCancelled(address by, uint256 indexed round);
 
     /// @notice emit when recovery is executed
-    event RecoveryExecuted(address oldOwner, address newOwner, uint256 round);
+    event RecoveryExecuted(address oldOwner, address newOwner, uint256 indexed round);
 
     /************************************************
      *  FUNCTIONS
@@ -175,15 +175,16 @@ contract Wallet is ReentrancyGuard {
     }
 
     /**
-     * @notice Allows a guardian to execute a wallet recovery
+     * @notice Allows a guardian to execute a wallet recovery and set a newOwner
      * Wallet must already be in recovery mode
      * @param newOwner - the new owner of the wallet
      * @param guardianList - list of addresses of guardians that have voted for this newOwner
      */
     function executeRecovery(address newOwner, address[] calldata guardianList) onlyGuardian onlyInRecovery external {
-        // Let's verify that all guardians agreed on the same newOwner
-        require(guardianList.length >= threshold, "more guardians requird to transfer ownership");
+        // Need enough guardians to agree on same newOwner
+        require(guardianList.length >= threshold, "more guardians required to transfer ownership");
 
+        // Let's verify that all guardians agreed on the same newOwner in the same round
         for (uint i = 0; i < guardianList.length; i++) {
             // cache recovery struct in memory
             Recovery memory recovery = guardianToRecovery[guardianList[i]];
@@ -191,7 +192,8 @@ contract Wallet is ReentrancyGuard {
             require(recovery.recoveryRound == currRecoveryRound, "round mismatch");
             require(recovery.proposedOwner == newOwner, "disagreement on new owner");
             require(!recovery.usedInExecuteRecovery, "duplicate guardian used in recovery");
-            // set field to true in storagre, not memory
+
+            // set field to true in storage, not memory
             guardianToRecovery[guardianList[i]].usedInExecuteRecovery = true;
         }
 
