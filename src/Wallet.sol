@@ -83,10 +83,6 @@ contract Wallet is ReentrancyGuard {
     /// @notice emit when recovery is executed
     event RecoveryExecuted(address oldOwner, address newOwner, uint256 indexed round);
 
-    /************************************************
-     *  FUNCTIONS
-    ***********************************************/
-
     /**
      * @notice Sets guardian hashes and threshold
      * @param guardianAddrHashes - array of guardian address hashes
@@ -104,6 +100,10 @@ contract Wallet is ReentrancyGuard {
         owner = msg.sender;
     }
 
+    /************************************************
+     *  Recovery
+    ***********************************************/
+
     /**
      * @notice Allows owner to execute an arbitrary transaction 
      * @dev to transfer ETH to an EOA, pass in empty string for data parameter
@@ -120,17 +120,6 @@ contract Wallet is ReentrancyGuard {
         require(success, "external call reverted");
         emit TransactionExecuted(callee, value, data);
         return result;
-    }
-
-    /**
-     * @notice Allows a guardian to transfer their guardianship 
-     * Cannot transfer guardianship during recovery mode
-     * @param newGuardianHash - hash of the address of the new guardian
-     */
-    function transferGuardianship(bytes32 newGuardianHash) onlyGuardian notInRecovery external {
-        isGuardian[keccak256(abi.encodePacked(msg.sender))] = false;
-        isGuardian[newGuardianHash] = true;
-        emit GuardinshipTransferred(msg.sender, newGuardianHash);
     }
 
     /**
@@ -165,11 +154,12 @@ contract Wallet is ReentrancyGuard {
     }
 
     /**
-     * @notice Allows a guardian to cancel a wallet recovery
+     * @notice Allows the owner to cancel a wallet recovery (assuming they recovered private keys)
      * Wallet must already be in recovery mode
-     * @dev TODO: trivially easy for one malicious guardian to DoS a wallet recovery
+     * @dev TODO: allow guardians to cancel recovery
+     * (need more than one guardian else trivially easy for one malicious guardian to DoS a wallet recovery)
      */
-    function cancelRecovery() onlyGuardian onlyInRecovery external {
+    function cancelRecovery() onlyOwner onlyInRecovery external {
         inRecovery = false;
         emit RecoveryCancelled(msg.sender, currRecoveryRound);
     }
@@ -202,5 +192,25 @@ contract Wallet is ReentrancyGuard {
         owner = newOwner;
         emit RecoveryExecuted(_oldOwner, newOwner, currRecoveryRound);
     }
+
+    /************************************************
+     *  Guardian Management
+    ***********************************************/
+
+    /**
+     * @notice Allows a guardian to transfer their guardianship 
+     * Cannot transfer guardianship during recovery mode
+     * @param newGuardianHash - hash of the address of the new guardian
+     */
+    function transferGuardianship(bytes32 newGuardianHash) onlyGuardian notInRecovery external {
+        isGuardian[keccak256(abi.encodePacked(msg.sender))] = false;
+        isGuardian[newGuardianHash] = true;
+        emit GuardinshipTransferred(msg.sender, newGuardianHash);
+    }
+
+    function initiateGuardianSwap(bytes32 guardianHashOld, bytes32 guardianHashNew) external onlyOwner {
+
+    }
+    
 
 }
