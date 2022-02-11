@@ -15,5 +15,10 @@
   "devDependencies": {
     "prettier": "^2.5.1",
     "solhint": "^3.3.6"
+  },
+  "dependencies": {
+    "ganache-cli": "^6.12.2",
+    "global": "^4.4.0",
+    "solidity-shell": "^0.0.10"
   }
 }
