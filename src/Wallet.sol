@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.11;
 import "@solmate/utils/ReentrancyGuard.sol";
+import "@oz/token/ERC721/IERC721Receiver.sol";
+import "@oz/token/ERC1155/IERC1155Receiver.sol";
 
 /**
  * @title SocialRecoveryWallet
@@ -10,10 +12,11 @@ import "@solmate/utils/ReentrancyGuard.sol";
  * In its current design, it is trivial for a compromised (stolen) signing key to drain the wallet. 
  * @author verum 
  */
-contract Wallet is ReentrancyGuard {
+contract Wallet is ReentrancyGuard, IERC721Receiver, IERC1155Receiver {
     /************************************************
      *  STORAGE
     ***********************************************/
+
     /// @notice true if hash of guardian address, else false
     mapping(bytes32 => bool) isGuardian;
 
@@ -47,6 +50,7 @@ contract Wallet is ReentrancyGuard {
     /************************************************
      *  MODIFIERS & EVENTS
     ***********************************************/
+
     modifier onlyOwner {
         require(msg.sender == owner, "only owner");
         _;
@@ -272,4 +276,44 @@ contract Wallet is ReentrancyGuard {
         emit GuardianRevealed(keccak256(abi.encodePacked(msg.sender)), msg.sender);
     }
 
+    /************************************************
+     *  Receiver Standards
+    ***********************************************/
+
+    /**
+     * @inheritdoc IERC721Receiver
+     */
+    function onERC721Received(address, address, uint256, bytes memory) public pure override returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
+    /**
+     * @inheritdoc IERC1155Receiver
+     */
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /**
+     * @inheritdoc IERC1155Receiver
+     */
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata) 
+        external pure returns (bytes4) {
+        return this.onERC1155BatchReceived.selector;
+    }
+
+    /**
+     * @dev Support for EIP 165
+     * not really sure if anyone uses this though...
+     */
+    function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+        if (
+            interfaceId == 0x01ffc9a7 || // ERC165 interfaceID
+            interfaceId == 0x150b7a02 || // ERC721TokenReceiver interfaceID
+            interfaceId == 0x4e2312e0 // ERC1155TokenReceiver interfaceID
+        ) {
+            return true;
+        }
+        return false;
+    }
 }
